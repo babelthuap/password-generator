@@ -24,6 +24,7 @@
     }
     #password {
       height: 200px;
+      overflow-wrap: break-word;
       width: 100%;
     }
   </style>
@@ -39,7 +40,7 @@
       Spaces<input id="spaces" type="checkbox" checked>
     </p>
     <p>Length: <input id="length" type="number" min="16" value="30"> <button id="generate">Generate</button></p>
-    <textarea id="password"></textarea>
+    <p id="password"></p>
   </div>
   <script>
   (function() {
@@ -68,7 +69,7 @@
       let regex = (rawRegex && rawRegex !== ' |') ? new RegExp(rawRegex.slice(0, -1)) : /./;
       let len = Number(lengthEl.value);
       let pwd = generate(len, regex);
-      passwordEl.value = pwd;
+      passwordEl.innerText = pwd;
     };
 
     document.getElementById('generate').addEventListener('click', updatePassword);
@@ -77,7 +78,11 @@
         updatePassword();
       }
     });
-    lengthEl.focus();    
+    lengthEl.focus();
+
+    window.addEventListener("beforeunload", () => {
+      passwordEl.innerText = '';
+    });
   })();
   </script>
 </body>
