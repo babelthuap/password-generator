@@ -2,89 +2,213 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Password Generator</title>
-  <style>
-    .container {
-      margin: auto;
-      width: 50%;
-      min-width: 300px;
-      max-width: 600px;
-    }
-    [type="checkbox"] {
-      margin-right: 8px;
-    }
-    #length {
-      width: 64px;
-    }
-    #length, #password {
-      font-family: monospace;
-      font-size: 14px;
-    }
-    #password {
-      height: 200px;
-      overflow-wrap: break-word;
-      width: 100%;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Password Generator</title>
+<style>
+.container {
+  background-color: lavender;
+  border-radius: 8px;
+  text-align: center;
+  margin: auto;
+  padding: 8px;
+  width: 300px;
+}
+[type="checkbox"] {
+  margin-right: 8px;
+}
+#char-set {
+  color: gray;
+}
+#length {
+  width: 64px;
+}
+#length, #password {
+  font-family: monospace;
+  font-size: 14px;
+}
+#password {
+  min-height: 100px;
+  overflow-wrap: break-word;
+  padding: 8px 0px;
+  width: 100%;
+}
+</style>
 </head>
 
 <body>
-  <div class="container">
-    <h2>Password Generator</h2>
-    <p>
-      Letters<input id="letters" type="checkbox" checked>
-      Numbers<input id="numbers" type="checkbox" checked>
-      Symbols<input id="symbols" type="checkbox" checked>
-      Spaces<input id="spaces" type="checkbox" checked>
-    </p>
-    <p>Length: <input id="length" type="number" min="16" value="30"> <button id="generate">Generate</button></p>
-    <p id="password"></p>
-  </div>
-  <script>
-  (function() {
-    const chrs       = Array.from(Array(95).keys(), n => String.fromCharCode(n + 32))
-        , lettersEl  = document.getElementById('letters')
-        , numbersEl  = document.getElementById('numbers')
-        , symbolsEl  = document.getElementById('symbols')
-        , spacesEl   = document.getElementById('spaces')
-        , lengthEl   = document.getElementById('length')
-        , passwordEl = document.getElementById('password');
+<div class="container">
+  <h2>Password Generator</h2>
+  <p>
+    Letters<input id="letters" type="checkbox" checked>
+    Numbers<input id="numbers" type="checkbox" checked>
+    Symbols<input id="symbols" type="checkbox" checked>
+  </p>
+  <textarea id="char-set" cols="32" rows="3"></textarea>
+  <p>Length: <input id="length" type="number" min="16" value="30"> <button id="generate">Generate</button></p>
+  <p id="password"></p>
+</div>
+<script>
+(() => {
+const CharSet = {
+  LETTERS: new Set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'),
+  NUMBERS: new Set('0123456789'),
+  SYMBOLS: new Set('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'),
+};
 
-    const generate = (len, regex) => {
-      let subset = chrs.filter(c => regex.test(c));
-      let str = Array.from(crypto.getRandomValues(new Uint32Array(len)), n => {
-        return subset[n % subset.length];
-      }).join('');
-      return str === str.trim() ? str : generate(len, regex);
+const getEl = id => document.getElementById(id);
+const El = {
+  CHAR_SET: getEl('char-set'),
+  GENERATE: getEl('generate'),
+  LENGTH: getEl('length'),
+  LETTERS: getEl('letters'),
+  NUMBERS: getEl('numbers'),
+  PASSWORD: getEl('password'),
+  SYMBOLS: getEl('symbols'),
+};
+
+const SetRelation = {
+  DISJOINT: 1,
+  INTERSECT: 2,
+  PROPER_SUPERSET: 3,
+  SUBSET: 4,
+};
+
+const EL_CHAR_SET_PAIRS = [
+  [El.LETTERS, CharSet.LETTERS],
+  [El.NUMBERS, CharSet.NUMBERS],
+  [El.SYMBOLS, CharSet.SYMBOLS],
+];
+
+const TWO_32 = 2**32;
+
+function updateCharSet() {
+  const oldChars = El.CHAR_SET.value;
+  const oldCharSet = new Set(oldChars);
+  let newChars = oldChars.split('');
+  for (let [el, charSet] of EL_CHAR_SET_PAIRS) {
+    if (!el.indeterminate) {
+      if (el.checked) {
+        for (let char of charSet) {
+          if (!oldCharSet.has(char)) {
+            newChars.push(char);
+          }
+        }
+      } else {
+        newChars = newChars.filter(char => !charSet.has(char));
+      }
     }
+  }
+  El.CHAR_SET.value = newChars.join('');
+  setCheckboxStates(newChars);
+}
 
-    const updatePassword = () => {
-      let rawRegex =
-          (lettersEl.checked ? '[A-Za-z]|'  : '') +
-          (numbersEl.checked ? '\\d|'       : '') +
-          (symbolsEl.checked ? '[^\\w ]|_|' : '') +
-          (spacesEl.checked  ? ' |'         : '');
-      let regex = (rawRegex && rawRegex !== ' |') ? new RegExp(rawRegex.slice(0, -1)) : /./;
-      let len = Number(lengthEl.value);
-      let pwd = generate(len, regex);
-      passwordEl.innerText = pwd;
-    };
+function setCheckboxStates(newVal) {
+  if (newVal.length === 0) {
+    for (let [el] of EL_CHAR_SET_PAIRS) {
+      el.checked = false;
+      el.indeterminate = false;
+    }
+  } else {
+    const newCharSet = new Set(newVal);
+    for (let [el, charSet] of EL_CHAR_SET_PAIRS) {
+      const relation = relationOf(charSet, newCharSet);
+      el.checked =
+          relation === SetRelation.PROPER_SUPERSET || relation === SetRelation.SUBSET;
+      el.indeterminate =
+          relation === SetRelation.INTERSECT || relation === SetRelation.PROPER_SUPERSET;
+    }
+  }
+  updatePassword();
+}
 
-    document.getElementById('generate').addEventListener('click', updatePassword);
-    lengthEl.addEventListener('keypress', (event) => {
-      if (event.keyCode === 13) {
-        updatePassword();
+function updatePassword() {
+  const len = parseInt(El.LENGTH.value);
+  const chars = El.CHAR_SET.value;
+  El.PASSWORD.innerText = generatePassword(len, chars);
+}
+
+function generatePassword(len, chars) {
+  if (chars.length === 0 || len < 0 || len == null) {
+    return '';
+  }
+  return getRandIntArray(len, chars.length).map(x => chars[x]).join('');
+}
+
+function getRandIntArray(len, modulus) {
+  const max = TWO_32 - TWO_32 % modulus;
+  const int32 = crypto.getRandomValues(new Uint32Array(len));
+  return int32.some(x => x >= max) ? getRandIntArray(len, modulus) :
+                                     Array.from(int32, x => x % modulus);
+}
+
+function relationOf(a, b) {
+  if (a.size > b.size) {
+    const reverse = relationOf(b, a);
+    return reverse === SetRelation.SUBSET ? SetRelation.PROPER_SUPERSET : reverse;
+  }
+  let intersect = false;
+  let subset = true;
+  for (let el of a) {
+    if (b.has(el)) {
+      intersect = true;
+      if (!subset) {
+        break;
+      }
+    } else {
+      subset = false;
+      if (intersect) {
+        break;
+      }
+    }
+  }
+  if (subset) {
+    return SetRelation.SUBSET;
+  }
+  return intersect ? SetRelation.INTERSECT : SetRelation.DISJOINT;
+}
+
+// Initialize UI:
+
+for (let [el] of EL_CHAR_SET_PAIRS) {
+  el.addEventListener('change', () => requestAnimationFrame(updateCharSet));
+}
+
+El.CHAR_SET.addEventListener('keydown', (event) => {
+  if (event.code === 'Enter') {
+    event.preventDefault();
+    updatePassword();
+  } else {
+    const oldVal = El.CHAR_SET.value;
+    requestAnimationFrame(() => {
+      const newVal = El.CHAR_SET.value
+      if (newVal !== oldVal) {
+        setCheckboxStates(newVal);
       }
     });
-    lengthEl.focus();
+  }
+});
 
-    window.addEventListener("beforeunload", () => {
-      passwordEl.innerText = '';
-    });
-  })();
-  </script>
+El.LENGTH.addEventListener('keydown', ({code}) => {
+  const oldVal = El.LENGTH.value;
+  requestAnimationFrame(() => {
+    if (code === 'Enter' || El.LENGTH.value !== oldVal) {
+      updatePassword();
+    }
+  });
+});
+
+El.GENERATE.addEventListener('click', updatePassword);
+
+window.addEventListener("beforeunload", () => {
+  El.PASSWORD.innerText = '';
+});
+
+updateCharSet();
+
+El.LENGTH.focus();
+})();
+</script>
 </body>
 
 </html>
