@@ -12,7 +12,9 @@
   text-align: center;
   margin: auto;
   padding: 8px;
-  width: 300px;
+  width: fit-content;
+  max-width: 50%;
+  min-width: 300px;
 }
 [type="checkbox"] {
   margin-right: 8px;
@@ -136,6 +138,10 @@ function generatePassword(len, chars) {
 }
 
 function getRandIntArray(len, modulus) {
+  // As of Chrome 84, crypto.getRandomValues fails when len > 16384.
+  if (len > 16384) {
+    return getRandIntArray(16384, modulus).concat(getRandIntArray(len - 16384, modulus));
+  }
   const max = TWO_32 - TWO_32 % modulus;
   const int32 = crypto.getRandomValues(new Uint32Array(len));
   return int32.some(x => x >= max) ? getRandIntArray(len, modulus) :
