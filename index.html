@@ -58,15 +58,14 @@ const CharSet = {
   SYMBOLS: new Set('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'),
 };
 
-const getEl = id => document.getElementById(id);
 const El = {
-  CHAR_SET: getEl('char-set'),
-  GENERATE: getEl('generate'),
-  LENGTH: getEl('length'),
-  LETTERS: getEl('letters'),
-  NUMBERS: getEl('numbers'),
-  PASSWORD: getEl('password'),
-  SYMBOLS: getEl('symbols'),
+  CHAR_SET: document.getElementById('char-set'),
+  GENERATE: document.getElementById('generate'),
+  LENGTH: document.getElementById('length'),
+  LETTERS: document.getElementById('letters'),
+  NUMBERS: document.getElementById('numbers'),
+  PASSWORD: document.getElementById('password'),
+  SYMBOLS: document.getElementById('symbols'),
 };
 
 const SetRelation = {
@@ -76,7 +75,7 @@ const SetRelation = {
   SUBSET: 4,
 };
 
-const EL_CHAR_SET_PAIRS = [
+const CHECKBOX_CHAR_SET_PAIRS = [
   [El.LETTERS, CharSet.LETTERS],
   [El.NUMBERS, CharSet.NUMBERS],
   [El.SYMBOLS, CharSet.SYMBOLS],
@@ -88,9 +87,9 @@ function updateCharSet() {
   const oldChars = El.CHAR_SET.value;
   const oldCharSet = new Set(oldChars);
   let newChars = oldChars.split('');
-  for (let [el, charSet] of EL_CHAR_SET_PAIRS) {
-    if (!el.indeterminate) {
-      if (el.checked) {
+  for (let [checkbox, charSet] of CHECKBOX_CHAR_SET_PAIRS) {
+    if (!checkbox.indeterminate) {
+      if (checkbox.checked) {
         for (let char of charSet) {
           if (!oldCharSet.has(char)) {
             newChars.push(char);
@@ -107,17 +106,17 @@ function updateCharSet() {
 
 function setCheckboxStates(newVal) {
   if (newVal.length === 0) {
-    for (let [el] of EL_CHAR_SET_PAIRS) {
-      el.checked = false;
-      el.indeterminate = false;
+    for (let [checkbox] of CHECKBOX_CHAR_SET_PAIRS) {
+      checkbox.checked = false;
+      checkbox.indeterminate = false;
     }
   } else {
     const newCharSet = new Set(newVal);
-    for (let [el, charSet] of EL_CHAR_SET_PAIRS) {
+    for (let [checkbox, charSet] of CHECKBOX_CHAR_SET_PAIRS) {
       const relation = relationOf(charSet, newCharSet);
-      el.checked =
+      checkbox.checked =
           relation === SetRelation.PROPER_SUPERSET || relation === SetRelation.SUBSET;
-      el.indeterminate =
+      checkbox.indeterminate =
           relation === SetRelation.INTERSECT || relation === SetRelation.PROPER_SUPERSET;
     }
   }
@@ -142,10 +141,9 @@ function getRandIntArray(len, modulus) {
   if (len > 16384) {
     return getRandIntArray(16384, modulus).concat(getRandIntArray(len - 16384, modulus));
   }
-  const max = TWO_32 - TWO_32 % modulus;
-  const int32 = crypto.getRandomValues(new Uint32Array(len));
-  return int32.some(x => x >= max) ? getRandIntArray(len, modulus) :
-                                     Array.from(int32, x => x % modulus);
+  const maxValid = TWO_32 - TWO_32 % modulus - 1;
+  const randUint32 = crypto.getRandomValues(new Uint32Array(len));
+  return Array.from(randUint32, x => x > maxValid ? getRandIntArray(1, modulus)[0] : x % modulus);
 }
 
 function relationOf(a, b) {
@@ -176,11 +174,11 @@ function relationOf(a, b) {
 
 // Initialize UI:
 
-for (let [el] of EL_CHAR_SET_PAIRS) {
-  el.addEventListener('change', () => requestAnimationFrame(updateCharSet));
+for (let [checkbox] of CHECKBOX_CHAR_SET_PAIRS) {
+  checkbox.addEventListener('change', () => requestAnimationFrame(updateCharSet));
 }
 
-El.CHAR_SET.addEventListener('keydown', (event) => {
+El.CHAR_SET.addEventListener('keydown', event => {
   if (event.code === 'Enter') {
     event.preventDefault();
     updatePassword();
