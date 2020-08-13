@@ -102,6 +102,7 @@ function updateCharSet() {
   }
   El.CHAR_SET.value = newChars.join('');
   setCheckboxStates(newChars);
+  updatePassword();
 }
 
 function setCheckboxStates(newVal) {
@@ -120,7 +121,6 @@ function setCheckboxStates(newVal) {
           relation === SetRelation.INTERSECT || relation === SetRelation.PROPER_SUPERSET;
     }
   }
-  updatePassword();
 }
 
 function updatePassword() {
@@ -188,6 +188,7 @@ El.CHAR_SET.addEventListener('keydown', event => {
       const newVal = El.CHAR_SET.value
       if (newVal !== oldVal) {
         setCheckboxStates(newVal);
+        updatePassword();
       }
     });
   }
